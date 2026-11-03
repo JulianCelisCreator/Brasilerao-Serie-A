@@ -1,0 +1,340 @@
+\documentclass[11pt,a4paper]{article}
+
+% ------------------------------------------------------------
+% Paquetes
+% ------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+
+\definecolor{awsorange}{HTML}{FF9900}
+\definecolor{awsnavy}{HTML}{232F3E}
+\definecolor{bronze}{HTML}{CD7F32}
+\definecolor{silver}{HTML}{9EA3A8}
+\definecolor{gold}{HTML}{D4AF37}
+
+\hypersetup{colorlinks=true,linkcolor=awsnavy,urlcolor=awsorange}
+
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small Propuesta de proyecto -- Brasileirão en AWS}
+\rhead{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlist{itemsep=2pt}
+
+\newtcolorbox{alerta}[1][]{colback=awsorange!8,colframe=awsorange,
+  coltitle=awsnavy,fonttitle=\bfseries,title=#1,arc=2pt,boxrule=0.8pt}
+\newtcolorbox{nota}[1][]{colback=awsnavy!5,colframe=awsnavy,
+  fonttitle=\bfseries,title=#1,arc=2pt,boxrule=0.8pt}
+
+% ------------------------------------------------------------
+% Portada
+% ------------------------------------------------------------
+\title{
+  \vspace{-1cm}
+  {\color{awsnavy}\LARGE\bfseries Pipeline de datos en AWS para el análisis predictivo del Brasileirão}\\[0.6cm]
+  \large Propuesta de proyecto
+}
+\author{[Nombres de los integrantes]\\[0.2cm] \small [Curso / Institución]}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+\noindent Este documento presenta la propuesta de un pipeline de datos \textit{serverless} construido sobre Amazon Web Services (AWS) para extraer, procesar y analizar información del Campeonato Brasileño de Fútbol (Brasileirão). Los datos se obtienen desde una API deportiva, se almacenan y transforman siguiendo una arquitectura medallón (bronce, plata y oro) y se consumen desde Power BI para estimar probabilidades de resultados, calcular puntos esperados y proyectar la tabla de posiciones final. Toda la solución está diseñada para operar dentro de la capa gratuita de AWS.
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introducción y problemática}
+% ============================================================
+
+\subsection{Contexto}
+El Campeonato Brasileño de Serie A es una de las ligas más competitivas del mundo: 20 equipos, 38 jornadas y una tabla que con frecuencia se define en las últimas fechas. Aficionados, analistas y medios consumen a diario resultados y estadísticas, pero rara vez cuentan con una herramienta que integre esa información y la convierta en proyecciones cuantitativas.
+
+\subsection{Problemática}
+Los datos del torneo están disponibles a través de APIs deportivas, pero presentan varios retos:
+\begin{itemize}
+  \item Llegan en formatos crudos (JSON anidado) que no están listos para el análisis.
+  \item Cambian después de cada jornada, por lo que deben actualizarse de forma periódica y automática.
+  \item Su procesamiento manual es lento, propenso a errores y difícil de reproducir.
+  \item No existe, en un solo lugar, una vista que combine resultados históricos con predicciones de los próximos encuentros.
+\end{itemize}
+
+\subsection{Objetivo general}
+Diseñar e implementar un pipeline de datos automatizado en AWS que extraiga, limpie y modele la información del Brasileirão, y que alimente un tablero en Power BI con predicciones de resultados y una proyección de la tabla final.
+
+\subsection{Objetivos específicos}
+\begin{enumerate}
+  \item Automatizar la extracción periódica de datos desde la API mediante AWS Lambda.
+  \item Almacenar los datos en Amazon S3 bajo una arquitectura medallón (bronce, plata, oro).
+  \item Limpiar y transformar los datos con AWS Glue y catalogarlos para su consulta.
+  \item Calcular la probabilidad de victoria, empate y derrota de los próximos partidos, así como los puntos esperados de cada equipo.
+  \item Construir un informe en Power BI con la proyección de la tabla de posiciones al final de la liga.
+\end{enumerate}
+
+% ============================================================
+\section{Arquitectura de datos propuesta}
+% ============================================================
+
+\subsection{Visión general}
+La solución sigue un enfoque \textit{serverless} y de arquitectura medallón. No se administran servidores: cada componente se ejecuta solo cuando se necesita, lo que reduce costos y facilita mantenerse dentro de la capa gratuita.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=1.3cm and 0.6cm,
+  box/.style={rectangle,rounded corners=3pt,draw=awsnavy,thick,
+              minimum width=2.3cm,minimum height=1.2cm,align=center,font=\small},
+  aws/.style={box,fill=awsorange!15},
+  ext/.style={box,fill=awsnavy!10},
+  arr/.style={-{Stealth[length=2.5mm]},thick,awsnavy}
+]
+  % Fila 1: ingesta
+  \node[ext] (api) {API\\Brasileirão};
+  \node[aws, right=0.6cm of api] (eb) {Amazon\\EventBridge};
+  \node[aws, right=0.6cm of eb] (lambda) {AWS\\Lambda};
+  \node[box, fill=bronze!25, right=0.6cm of lambda] (bronze) {S3 Bronce\\\scriptsize JSON crudo};
+
+  % Fila 2: transformación
+  \node[aws, below=of bronze] (glue) {AWS Glue\\\scriptsize ETL + Catálogo};
+  \node[box, fill=silver!30, left=0.6cm of glue] (silver) {S3 Plata\\\scriptsize datos limpios};
+  \node[box, fill=gold!30, left=0.6cm of silver] (gold) {S3 Oro\\\scriptsize modelo analítico};
+  \node[aws, left=0.6cm of gold] (athena) {Amazon\\Athena};
+
+  % Fila 3: consumo
+  \node[ext, below=of athena] (pbi) {Power BI\\\scriptsize informe};
+
+  \draw[arr] (eb) -- (lambda);
+  \draw[arr] (lambda.north) to[bend right=25]
+    node[above,font=\scriptsize]{consulta} (api.north);
+  \draw[arr] (lambda) -- (bronze);
+  \draw[arr] (bronze) -- (glue);
+  \draw[arr] (glue) -- (silver);
+  \draw[arr] (silver) -- (gold);
+  \draw[arr] (gold) -- (athena);
+  \draw[arr] (athena) -- (pbi);
+\end{tikzpicture}
+\caption{Arquitectura propuesta. EventBridge programa la ejecución de Lambda, que consulta la API y deposita los datos en S3. Glue transforma los datos entre capas y Athena los expone a Power BI.}
+\end{figure}
+
+\subsection{Servicios de AWS utilizados}
+
+\begin{longtable}{>{\bfseries\raggedright}p{3.2cm} >{\raggedright}p{5.6cm} >{\raggedright\arraybackslash}p{5.4cm}}
+\toprule
+Servicio & Función en el proyecto & Justificación \\
+\midrule
+\endhead
+Amazon EventBridge Scheduler & Programa la ejecución periódica de la extracción (por ejemplo, diaria o después de cada jornada). & Evita ejecuciones manuales y no requiere servidores encendidos. \\
+AWS Lambda & Consulta la API, maneja la paginación y guarda la respuesta en S3. & Pago por ejecución; uso muy bajo para este volumen de datos. \\
+Amazon S3 & \textit{Data lake} con tres capas: bronce, plata y oro. & Almacenamiento barato, duradero e integrado con Glue y Athena. \\
+AWS Glue (Jobs) & Limpieza, tipado, deduplicación y modelado; conversión de JSON a CSV/Parquet. & ETL administrado, sin infraestructura propia. \\
+AWS Glue Data Catalog y Crawlers & Registra los esquemas de las tablas de cada capa. & Permite consultar los datos con SQL desde Athena. \\
+Amazon Athena & Motor SQL sobre la capa oro y punto de conexión para Power BI (conector ODBC). & Se paga por datos escaneados; con Parquet el costo es mínimo. \\
+AWS Systems Manager Parameter Store & Guarda la clave de la API. & Evita credenciales en el código; el nivel estándar no tiene costo. \\
+AWS IAM & Roles y permisos de mínimo privilegio para cada servicio. & Seguridad y control de acceso. \\
+Amazon CloudWatch & Logs, métricas y alarmas del pipeline. & Monitoreo y detección de fallas. \\
+AWS Budgets & Alertas de gasto. & Control de costos (FinOps). \\
+\bottomrule
+\end{longtable}
+
+\subsection{Capa de servicio: alternativas evaluadas}
+Para exponer los datos finales a Power BI se evaluaron dos opciones:
+
+\begin{itemize}
+  \item \textbf{S3 (capa oro) + Athena} (\textit{opción recomendada}): no requiere una base de datos encendida, el costo depende solo de las consultas y encaja con el volumen pequeño del proyecto.
+  \item \textbf{Base de datos relacional (Amazon RDS o Aurora PostgreSQL Serverless)}: conexión nativa desde Power BI y modelo relacional clásico, pero con mayor riesgo de consumir créditos si la instancia permanece activa. Se reserva como alternativa si el equipo prefiere trabajar con una base de datos relacional tradicional.
+\end{itemize}
+
+% ============================================================
+\section{Pipeline de datos}
+% ============================================================
+
+\subsection{Etapa 1: Extracción (capa bronce)}
+\begin{itemize}
+  \item EventBridge dispara la función Lambda según una frecuencia definida.
+  \item Lambda consulta los \textit{endpoints} de la API: partidos, resultados, tabla de posiciones, equipos y calendario de próximos encuentros.
+  \item La respuesta se guarda sin modificar en la ruta:\\ \texttt{s3://<bucket>/bronze/<entidad>/fecha=AAAA-MM-DD/}
+  \item Conservar el dato crudo permite reprocesar en el futuro sin volver a consumir la API.
+\end{itemize}
+
+\subsection{Etapa 2: Limpieza y estandarización (capa plata)}
+Un \textit{job} de AWS Glue lee la capa bronce y:
+\begin{itemize}
+  \item Aplana las estructuras JSON anidadas y las convierte a formato tabular (CSV o Parquet).
+  \item Normaliza nombres de equipos, fechas y zonas horarias.
+  \item Corrige tipos de datos, elimina duplicados y trata valores nulos.
+  \item Escribe el resultado en \texttt{s3://<bucket>/silver/}.
+\end{itemize}
+
+\subsection{Etapa 3: Modelado analítico (capa oro)}
+Un segundo \textit{job} construye las tablas listas para el análisis:
+\begin{itemize}
+  \item \textbf{fact\_partidos}: resultados, goles y condición de local o visitante.
+  \item \textbf{dim\_equipos} y \textbf{dim\_calendario}.
+  \item \textbf{fuerza\_equipos}: indicadores de ataque y defensa por equipo, como local y como visitante.
+  \item \textbf{predicciones}: probabilidad de victoria, empate y derrota para cada partido pendiente, junto con los puntos esperados.
+\end{itemize}
+
+\subsection{Etapa 4: Modelo predictivo}
+Se propone un modelo de Poisson, ampliamente usado en el análisis de fútbol:
+\begin{enumerate}
+  \item Se estima la fuerza ofensiva y defensiva de cada equipo a partir de los goles marcados y recibidos, diferenciando local y visitante.
+  \item Para cada partido pendiente se calcula el número esperado de goles de cada equipo ($\lambda_{\text{local}}$ y $\lambda_{\text{visitante}}$).
+  \item Con la distribución de Poisson se obtiene la probabilidad de cada marcador:
+  \[
+    P(X = k) = \frac{\lambda^{k} e^{-\lambda}}{k!}
+  \]
+  y, a partir de ahí, $P(\text{victoria})$, $P(\text{empate})$ y $P(\text{derrota})$.
+  \item Los puntos esperados de un equipo en un partido son:
+  \[
+    xPts = 3 \cdot P(\text{victoria}) + 1 \cdot P(\text{empate})
+  \]
+  \item La tabla proyectada suma los puntos actuales y los puntos esperados de los partidos restantes. Opcionalmente, una simulación Monte Carlo estima la probabilidad de campeonato, de clasificación a torneos internacionales y de descenso.
+\end{enumerate}
+
+\subsection{Etapa 5: Consumo y visualización}
+\begin{itemize}
+  \item Los Crawlers de Glue registran las tablas de la capa oro en el Data Catalog.
+  \item Power BI Desktop se conecta a Athena mediante el conector ODBC e importa los datos de forma periódica.
+  \item El informe incluye: tabla actual frente a tabla proyectada, probabilidades por partido, evolución de puntos y ranking de fuerza de los equipos.
+\end{itemize}
+
+\subsection{Orquestación y monitoreo}
+\begin{itemize}
+  \item Glue Workflows, o un disparador por evento de S3, encadena los \textit{jobs} después de cada extracción.
+  \item CloudWatch centraliza los logs y genera alarmas si alguna etapa falla.
+\end{itemize}
+
+% ============================================================
+\section{Seguridad y gobierno de datos}
+% ============================================================
+
+\subsection{Gestión de identidades y accesos}
+\begin{itemize}
+  \item Un rol de IAM por servicio (Lambda, Glue) con permisos de mínimo privilegio, limitados a los prefijos de S3 que cada uno necesita.
+  \item Autenticación multifactor (MFA) en la cuenta raíz; el trabajo diario se hace con usuarios o roles, nunca con la cuenta raíz.
+  \item Usuario de solo lectura para la conexión de Power BI a Athena.
+\end{itemize}
+
+\subsection{Protección de los datos}
+\begin{itemize}
+  \item Cifrado en reposo en S3 con claves administradas por S3 (SSE-S3), sin costo adicional.
+  \item Cifrado en tránsito mediante HTTPS en todas las llamadas.
+  \item Bloqueo de acceso público activado en todos los buckets.
+  \item La clave de la API se guarda en Parameter Store, nunca en el código fuente ni en repositorios.
+\end{itemize}
+
+\subsection{Gobierno de datos}
+\begin{itemize}
+  \item \textbf{Catálogo}: el Glue Data Catalog documenta esquemas y tablas de cada capa.
+  \item \textbf{Linaje}: la estructura bronce $\rightarrow$ plata $\rightarrow$ oro permite rastrear el origen de cada dato.
+  \item \textbf{Calidad}: validaciones en los \textit{jobs} de Glue (conteo de partidos por jornada, equipos válidos, ausencia de duplicados).
+  \item \textbf{Retención}: políticas de ciclo de vida en S3 para eliminar o archivar datos crudos antiguos.
+  \item \textbf{Etiquetado}: todos los recursos llevan etiquetas (\texttt{proyecto}, \texttt{ambiente}, \texttt{responsable}) para atribuir costos.
+  \item \textbf{Uso de la API}: se respetan los términos de uso y los límites de solicitudes del proveedor de datos.
+\end{itemize}
+
+% ============================================================
+\section{Análisis económico (FinOps)}
+% ============================================================
+
+\subsection{Modelo de capa gratuita de AWS}
+Desde el 15 de julio de 2025, las cuentas nuevas de AWS eligen entre un plan gratuito y un plan de pago. El plan gratuito incluye 100 USD en créditos al crear la cuenta y hasta 100 USD adicionales al completar actividades de incorporación. Dura hasta seis meses o hasta que se agoten los créditos, lo que ocurra primero; en ese momento la cuenta se cierra en lugar de generar cobros. Además, existen servicios con cuotas \textit{siempre gratuitas} que no consumen créditos, como AWS Lambda.
+
+\begin{nota}[Importante]
+Las condiciones de la capa gratuita cambian con el tiempo y dependen de la fecha de creación de la cuenta. Antes de iniciar, el equipo debe verificar las condiciones vigentes en la página oficial de AWS y estimar el consumo con la AWS Pricing Calculator.
+\end{nota}
+
+\subsection{Estimación de consumo mensual}
+
+\begin{longtable}{>{\bfseries\raggedright}p{2.8cm} >{\raggedright}p{4.2cm} >{\raggedright}p{4.2cm} >{\raggedright\arraybackslash}p{2.6cm}}
+\toprule
+Servicio & Consumo estimado & Cobertura gratuita & Costo esperado \\
+\midrule
+\endhead
+Lambda & 30 a 100 ejecuciones al mes, de pocos segundos cada una & 1 millón de solicitudes y 400.000 GB-s al mes (siempre gratis) & 0 USD \\
+EventBridge Scheduler & Menos de 100 invocaciones al mes & Cuota mensual gratuita & 0 USD \\
+S3 & Menos de 1 GB de datos & Cuota gratuita o créditos & $\approx$ 0 USD \\
+Glue Jobs & 2 \textit{jobs} cortos por ejecución & No es siempre gratuito; se cubre con créditos & Bajo (ver nota) \\
+Glue Data Catalog & Pocas decenas de tablas & Primer millón de objetos gratis & 0 USD \\
+Athena & Megabytes escaneados por consulta & Se cubre con créditos & Menos de 1 USD \\
+CloudWatch & Logs básicos & Cuota gratuita & 0 USD \\
+Parameter Store & 1 parámetro estándar & Sin costo & 0 USD \\
+Power BI Desktop & Informe local & Aplicación gratuita & 0 USD \\
+\bottomrule
+\end{longtable}
+
+\noindent\textbf{Nota sobre Glue:} es el servicio con mayor riesgo de consumo. Se cobra por DPU-hora con una duración mínima por ejecución, por lo que conviene usar \textit{jobs} de tipo Python Shell o Spark con el mínimo de \textit{workers}, ejecutarlos solo cuando haya datos nuevos y evitar ejecuciones repetitivas durante el desarrollo. Como alternativa de menor costo, la limpieza puede hacerse dentro de Lambda (por ejemplo, con pandas) y reservar Glue solo para el catálogo.
+
+\subsection{Prácticas FinOps del proyecto}
+\begin{itemize}
+  \item Crear un presupuesto en AWS Budgets con alertas al 50\,\%, 80\,\% y 100\,\% de los créditos.
+  \item Activar las alertas de uso de la capa gratuita en la consola de facturación.
+  \item Usar formato Parquet y particiones por fecha para reducir los datos escaneados por Athena.
+  \item Programar las extracciones según el calendario real de partidos, sin frecuencias innecesarias.
+  \item Revisar semanalmente el Cost Explorer y eliminar los recursos que no se usen.
+  \item Etiquetar todos los recursos para atribuir el gasto al proyecto.
+\end{itemize}
+
+% ============================================================
+\section{Conclusiones y recomendaciones}
+% ============================================================
+
+\subsection{Conclusiones}
+\begin{itemize}
+  \item Una arquitectura \textit{serverless} sobre AWS permite automatizar de punta a punta la extracción, transformación y análisis de los datos del Brasileirão sin administrar servidores.
+  \item La arquitectura medallón aporta trazabilidad, calidad y la posibilidad de reprocesar los datos desde su origen.
+  \item El modelo de Poisson y el cálculo de puntos esperados ofrecen una base sólida y explicable para proyectar la tabla final.
+  \item Con un diseño cuidadoso, el costo del proyecto puede mantenerse dentro de la capa gratuita de AWS.
+\end{itemize}
+
+\subsection{Recomendaciones}
+\begin{itemize}
+  \item Configurar AWS Budgets y las alertas de capa gratuita antes de crear cualquier otro recurso.
+  \item Comenzar con S3 + Athena como capa de servicio y evaluar una base de datos relacional solo si es necesario.
+  \item Validar las predicciones comparándolas con los resultados reales de jornadas ya jugadas.
+  \item Como trabajo futuro: incorporar variables adicionales (goles esperados, lesiones, rachas), usar infraestructura como código (AWS CloudFormation o Terraform) y publicar el informe en el servicio de Power BI.
+\end{itemize}
+
+\subsection{Alcances y limitaciones}
+
+\begin{alerta}[Dependencia de la capa gratuita de AWS]
+\textbf{Todo el desarrollo, la implementación y la operación de este proyecto dependen explícitamente de la capa gratuita de Amazon Web Services (AWS Free Tier).} El diseño, la elección de servicios, la frecuencia de ejecución y el volumen de datos procesados se ajustan a los límites y créditos de dicha capa. En consecuencia:
+\begin{itemize}
+  \item El alcance del proyecto está limitado al período de vigencia del plan gratuito (hasta seis meses o hasta agotar los créditos).
+  \item Si los créditos se agotan o el plan vence, la cuenta puede cerrarse y el pipeline dejará de funcionar.
+  \item Cualquier ampliación (mayor volumen de datos, más ligas, ejecuciones más frecuentes o publicación en línea del informe) podría generar costos y queda fuera del alcance de esta propuesta.
+\end{itemize}
+\end{alerta}
+
+\noindent Adicionalmente, el proyecto:
+\begin{itemize}
+  \item Se limita a la Serie A del Campeonato Brasileño.
+  \item Depende de la disponibilidad, la calidad y los límites de uso de la API seleccionada.
+  \item Ofrece proyecciones probabilísticas con fines académicos, no pronósticos garantizados.
+  \item Utiliza Power BI Desktop en su versión gratuita; la publicación y el uso compartido en línea no están incluidos.
+\end{itemize}
+
+\end{document}

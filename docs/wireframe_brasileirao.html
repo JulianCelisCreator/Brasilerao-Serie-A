@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe – Informe Power BI Brasileirão</title>
+<style>
+  :root{
+    --bg:#eceef1; --card:#fff; --ink:#1f2933; --muted:#6b7480; --line:#cfd4da;
+    --soft:#f4f5f7; --accent:#232F3E; --hl:#FF9900;
+    --win:#4a7c59; --draw:#a3a9b1; --loss:#b5543c;
+    --note:#fff7d6; --noteb:#e6c84f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  .app{display:grid;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr auto;min-height:100vh}
+  header{grid-column:1/3;background:var(--accent);color:#fff;display:flex;align-items:center;gap:16px;padding:10px 18px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:600}
+  header .tag{font-size:11px;border:1px dashed #ffffff88;padding:2px 8px;border-radius:10px;color:#ffd79a}
+  header .sp{flex:1}
+  header label{font-size:12px;display:flex;gap:6px;align-items:center;cursor:pointer}
+  aside{background:#fafbfc;border-right:1px solid var(--line);padding:14px}
+  aside h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:4px 0 10px}
+  .slicer{margin-bottom:14px}
+  .slicer span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .slicer select{width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:#fff;font:inherit}
+  .fresh{font-size:12px;border:1px dashed var(--line);border-radius:6px;padding:10px;background:#fff;color:var(--muted)}
+  .fresh b{color:var(--ink)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--win);margin-right:6px}
+  main{padding:16px;overflow:auto}
+  .page{display:none}
+  .page.on{display:block}
+  .grid{display:grid;gap:14px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;position:relative}
+  .card h2{font-size:13px;margin:0 0 10px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .kpi .v{font-size:24px;font-weight:700}
+  .kpi .l{font-size:12px;color:var(--muted)}
+  .kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+  .badge{display:none;background:var(--hl);color:#232F3E;font-size:11px;font-weight:700;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;flex:none}
+  .notes-on .badge{display:inline-flex}
+  .note{display:none;background:var(--note);border:1px dashed var(--noteb);border-radius:4px;padding:6px 8px;font-size:12px;margin-top:10px;color:#5b4a00}
+  .notes-on .note{display:block}
+  .note code{background:#fff3;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:5px 6px;text-align:right;border-bottom:1px solid #eef0f2;white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;background:var(--soft);position:sticky;top:0}
+  td.t,th.t{text-align:left}
+  tr.z-lib td:first-child{box-shadow:inset 3px 0 0 #2f6db5}
+  tr.z-sud td:first-child{box-shadow:inset 3px 0 0 #7fa7d6}
+  tr.z-rel td:first-child{box-shadow:inset 3px 0 0 var(--loss)}
+  tr.sel td{background:#fff4e0}
+  .delta.up{color:var(--win)} .delta.dn{color:var(--loss)}
+  .bar{height:8px;background:#eef0f2;border-radius:4px;overflow:hidden;min-width:60px}
+  .bar i{display:block;height:100%;background:#7d8794}
+  .legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .two{grid-template-columns:1.35fr 1fr}
+  .match{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:8px;border:1px solid #eef0f2;border-radius:6px;margin-bottom:8px;cursor:pointer}
+  .match:hover{border-color:#b9c0c8}
+  .match.on{border-color:var(--hl);background:#fffaf2}
+  .match .h{text-align:right;font-weight:600}
+  .match .a{font-weight:600}
+  .match .vs{font-size:11px;color:var(--muted)}
+  .stack{grid-column:1/4;display:flex;height:16px;border-radius:3px;overflow:hidden;font-size:10.5px;color:#fff;font-weight:600}
+  .stack div{display:flex;align-items:center;justify-content:center;min-width:0}
+  .meta{grid-column:1/4;display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+  .heat td{text-align:center;width:44px;height:34px;border:1px solid #fff;font-size:11.5px}
+  .heat th{text-align:center;background:none}
+  svg text{font-family:inherit}
+  footer{grid-column:1/3;background:#e3e6ea;border-top:1px solid var(--line);display:flex;gap:2px;padding:0 10px;overflow-x:auto}
+  footer a{padding:9px 16px;font-size:13px;color:var(--muted);text-decoration:none;border-top:3px solid transparent;white-space:nowrap}
+  footer a.on{background:#fff;color:var(--ink);border-top-color:var(--hl);font-weight:600}
+  .sub{color:var(--muted);font-size:12px;font-weight:400}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .chip{font-size:12px;border:1px solid var(--line);padding:3px 9px;border-radius:12px;cursor:pointer;background:#fff;user-select:none}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .scroll{max-height:560px;overflow:auto}
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr}
+    header,footer{grid-column:1}
+    aside{border-right:0;border-bottom:1px solid var(--line)}
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .two{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="app notes-on" id="app">
+  <header>
+    <h1>Brasileirão Série A · Informe predictivo</h1>
+    <span class="tag">WIREFRAME · datos de ejemplo simulados</span>
+    <span class="sp"></span>
+    <label><input type="checkbox" id="tgl" checked> Mostrar anotaciones técnicas</label>
+  </header>
+
+  <aside>
+    <h3>Filtros</h3>
+    <div class="slicer"><span>Temporada</span><select disabled><option>2026</option></select></div>
+    <div class="slicer"><span>Jornada de corte</span><select id="selRound"></select></div>
+    <div class="slicer"><span>Equipo destacado</span><select id="selTeam"></select></div>
+    <div class="fresh">
+      <div><span class="dot"></span><b>Pipeline OK</b></div>
+      <div style="margin-top:6px">Última extracción (Lambda):<br><b>03/11/2026 06:00</b></div>
+      <div style="margin-top:6px">Último job Glue (oro):<br><b>03/11/2026 06:07</b></div>
+      <div style="margin-top:6px">Origen: Athena · <code>brasileirao_gold</code></div>
+    </div>
+    <div class="note">El panel de estado lee una tabla de control escrita por el job de Glue al terminar (fecha, filas procesadas, estado).</div>
+  </aside>
+
+  <main>
+    <!-- PÁGINA 1 -->
+    <section class="page" id="p-tabla">
+      <div class="grid kpis" id="kpis"></div>
+      <div class="grid two" style="margin-top:14px">
+        <div class="card">
+          <h2><span class="badge">2</span>Tabla actual vs. tabla proyectada <span class="sub" id="lblProj"></span></h2>
+          <div class="scroll"><table id="tblProj"></table></div>
+          <div class="legend">
+            <span><i style="background:#2f6db5"></i>Libertadores (1–6)</span>
+            <span><i style="background:#7fa7d6"></i>Sudamericana (7–12)</span>
+            <span><i style="background:var(--loss)"></i>Descenso (17–20)</span>
+            <span>Δ = puestos ganados/perdidos en la proyección</span>
+          </div>
+          <div class="note"><b>Fuente:</b> <code>gold.predicciones</code> + <code>fact_partidos</code>. Pts proyectados = Pts actuales + Σ xPts de los partidos restantes, con <code>xPts = 3·P(V) + 1·P(E)</code>. % Campeón / Libertadores / Descenso salen de 5.000 simulaciones Monte Carlo.</div>
+        </div>
+        <div class="card">
+          <h2><span class="badge">3</span>Probabilidades de fin de temporada</h2>
+          <div id="probBars"></div>
+          <div class="note">Gráfico de barras apiladas por equipo. Visual nativo de Power BI (barras 100 %), ordenado por puntos proyectados.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PÁGINA 2 -->
+    <section class="page" id="p-partidos">
+      <div class="grid two">
+        <div class="card">
+          <h2><span class="badge">4</span>Próxima jornada · probabilidades por partido <span class="sub" id="lblNext"></span></h2>
+          <div id="matches"></div>
+          <div class="legend">
+            <span><i style="background:var(--win)"></i>Victoria local</span>
+            <span><i style="background:var(--draw)"></i>Empate</span>
+            <span><i style="background:var(--loss)"></i>Victoria visitante</span>
+          </div>
+          <div class="note"><b>Fuente:</b> <code>gold.predicciones</code> (una fila por partido pendiente: λ local, λ visitante, P(V), P(E), P(D), xPts). Clic en un partido para ver la matriz de marcadores.</div>
+        </div>
+        <div class="card">
+          <h2><span class="badge">5</span>Matriz de marcadores (Poisson) <span class="sub" id="lblHeat"></span></h2>
+          <div id="heat"></div>
+          <div class="note">Cada celda es <code>P(X=i)·P(Y=j)</code> con <code>P(X=k)=λᵏe^−λ/k!</code>. La suma de la diagonal = P(empate); por debajo = victoria local; por encima = victoria visitante.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PÁGINA 3 -->
+    <section class="page" id="p-evolucion">
+      <div class="card">
+        <h2><span class="badge">6</span>Evolución de puntos por jornada <span class="sub">línea continua = real · línea punteada = proyección (xPts acumulados)</span></h2>
+        <div class="chips" id="chips"></div>
+        <div id="lineChart"></div>
+        <div class="note"><b>Fuente:</b> <code>fact_partidos</code> (acumulado real) + <code>gold.predicciones</code> (acumulado esperado). Selección de equipos = segmentador de Power BI.</div>
+      </div>
+    </section>
+
+    <!-- PÁGINA 4 -->
+    <section class="page" id="p-fuerza">
+      <div class="grid two">
+        <div class="card">
+          <h2><span class="badge">7</span>Mapa de fuerza: ataque vs. defensa</h2>
+          <div id="scatter"></div>
+          <div class="note"><b>Fuente:</b> <code>gold.fuerza_equipos</code>. Índice 1,00 = promedio de la liga. Ataque = goles a favor / promedio; defensa = goles en contra / promedio (menor es mejor, eje invertido).</div>
+        </div>
+        <div class="card">
+          <h2><span class="badge">8</span>Ranking de fuerza <span class="sub">local / visitante</span></h2>
+          <div class="scroll"><table id="tblStr"></table></div>
+          <div class="note">Estos índices son los que alimentan λ: <code>λ_local = Atq_local(A) · Def_visit(B) · μ_local</code>.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="tabs">
+    <a href="#tabla" data-p="p-tabla">1 · Tabla proyectada</a>
+    <a href="#partidos" data-p="p-partidos">2 · Próximos partidos</a>
+    <a href="#evolucion" data-p="p-evolucion">3 · Evolución de puntos</a>
+    <a href="#fuerza" data-p="p-fuerza">4 · Fuerza de equipos</a>
+  </footer>
+</div>
+
+<script>
+// ---------- Datos de ejemplo (simulados, deterministas) ----------
+const TEAMS=[
+ ["Flamengo","FLA",1.55,.75],["Palmeiras","PAL",1.5,.72],["Cruzeiro","CRU",1.35,.8],["Botafogo","BOT",1.3,.85],
+ ["Fluminense","FLU",1.2,.9],["São Paulo","SAO",1.15,.92],["Internacional","INT",1.15,.95],["Bahia","BAH",1.12,1.0],
+ ["Corinthians","COR",1.05,.95],["Atlético-MG","CAM",1.08,1.0],["Vasco","VAS",1.05,1.08],["Grêmio","GRE",1.0,1.05],
+ ["Fortaleza","FOR",.95,1.05],["Bragantino","RBB",.98,1.1],["Ceará","CEA",.9,1.05],["Santos","SAN",.95,1.15],
+ ["Vitória","VIT",.85,1.15],["Juventude","JUV",.82,1.25],["Mirassol","MIR",.9,1.12],["Sport","SPT",.78,1.3]
+];
+const N=20, R=38, PLAYED_MAX=30;
+let seed=20261103; const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+const pois=l=>{let L=Math.exp(-l),k=0,p=1;do{k++;p*=rnd()}while(p>L);return k-1};
+
+// Calendario round-robin (método del círculo)
+const sched=[];{const ids=[...Array(N).keys()];for(let r=0;r<19;r++){const m=[];for(let i=0;i<N/2;i++){let a=ids[i],b=ids[N-1-i];m.push(r%2?[b,a]:[a,b])}sched.push(m);ids.splice(1,0,ids.pop())}
+ for(let r=0;r<19;r++)sched.push(sched[r].map(([a,b])=>[b,a]));}
+// Resultados "reales" de las jornadas jugadas
+const results=sched.map(m=>m.map(([h,a])=>{const lh=1.35*TEAMS[h][2]*TEAMS[a][3],la=1.05*TEAMS[a][2]*TEAMS[h][3];return [h,a,pois(lh),pois(la)]}));
+
+function model(played){
+  const st=TEAMS.map(()=>({pts:0,gf:0,ga:0,w:0,d:0,l:0,pj:0,hgf:0,hga:0,hn:0,agf:0,aga:0,an:0}));
+  const hist=TEAMS.map(()=>[0]);
+  for(let r=0;r<played;r++){for(const [h,a,gh,ga] of results[r]){
+    const H=st[h],A=st[a];H.pj++;A.pj++;H.gf+=gh;H.ga+=ga;A.gf+=ga;A.ga+=gh;
+    H.hgf+=gh;H.hga+=ga;H.hn++;A.agf+=ga;A.aga+=gh;A.an++;
+    if(gh>ga){H.pts+=3;H.w++;A.l++}else if(gh<ga){A.pts+=3;A.w++;H.l++}else{H.pts++;A.pts++;H.d++;A.d++}}
+    st.forEach((s,i)=>hist[i].push(s.pts));}
+  let tH=0,tA=0,n=0;st.forEach(s=>{tH+=s.hgf;tA+=s.agf;n+=s.hn});
+  const muH=tH/n,muA=tA/n;
+  const str=st.map(s=>({atH:(s.hgf/s.hn)/muH,dfH:(s.hga/s.hn)/muA,atA:(s.agf/s.an)/muA,dfA:(s.aga/s.an)/muH}));
+  const lam=(h,a)=>[str[h].atH*str[a].dfA*muH,str[a].atA*str[h].dfH*muA];
+  const pm=(l,k)=>{let f=1;for(let i=2;i<=k;i++)f*=i;return Math.pow(l,k)*Math.exp(-l)/f};
+  const probs=(h,a)=>{const [lh,la]=lam(h,a);let w=0,d=0,L=0;for(let i=0;i<=10;i++)for(let j=0;j<=10;j++){const p=pm(lh,i)*pm(la,j);if(i>j)w+=p;else if(i==j)d+=p;else L+=p}return {lh,la,w,d,l:L}};
+  // proyección
+  const xp=TEAMS.map(()=>0), xhist=TEAMS.map((_,i)=>[hist[i][played]]);
+  const future=[];
+  for(let r=played;r<R;r++){for(const [h,a] of sched[r]){const p=probs(h,a);future.push({r,h,a,...p});xp[h]+=3*p.w+p.d;xp[a]+=3*p.l+p.d}
+    TEAMS.forEach((_,i)=>xhist[i].push(st[i].pts+xp[i]));}
+  // Monte Carlo
+  const SIMS=5000, champ=Array(N).fill(0),lib=Array(N).fill(0),rel=Array(N).fill(0);
+  for(let s=0;s<SIMS;s++){const p=st.map(x=>x.pts+rnd()*.01);
+    for(const f of future){const u=rnd();if(u<f.w)p[f.h]+=3;else if(u<f.w+f.d){p[f.h]++;p[f.a]++}else p[f.a]+=3}
+    const ord=[...p.keys()].sort((x,y)=>p[y]-p[x]);champ[ord[0]]++;for(let k=0;k<6;k++)lib[ord[k]]++;for(let k=16;k<20;k++)rel[ord[k]]++;}
+  const rows=st.map((s,i)=>({i,...s,dg:s.gf-s.ga,xp:xp[i],proj:s.pts+xp[i],pc:champ[i]/SIMS,pl:lib[i]/SIMS,pr:rel[i]/SIMS,...str[i]}));
+  const cur=[...rows].sort((a,b)=>b.pts-a.pts||b.dg-a.dg||b.gf-a.gf);cur.forEach((r,k)=>r.posA=k+1);
+  const pro=[...rows].sort((a,b)=>b.proj-a.proj);pro.forEach((r,k)=>r.posP=k+1);
+  return {rows,cur,pro,future,hist,xhist,muH,muA,lam,pm,played};
+}
+
+// ---------- UI ----------
+const $=id=>document.getElementById(id), f1=x=>x.toFixed(1), pc=x=>x<.005&&x>0?"<1%":Math.round(x*100)+"%";
+let M, selTeam=0, selMatch=0, chips=new Set([0,1,2]);
+for(let r=20;r<=PLAYED_MAX;r++)$("selRound").insertAdjacentHTML("beforeend",`<option ${r==PLAYED_MAX?"selected":""} value="${r}">Jornada ${r}</option>`);
+TEAMS.forEach((t,i)=>$("selTeam").insertAdjacentHTML("beforeend",`<option value="${i}">${t[0]}</option>`));
+$("selRound").onchange=()=>{selMatch=0;run()};
+$("selTeam").onchange=e=>{selTeam=+e.target.value;chips.add(selTeam);render()};
+$("tgl").onchange=e=>$("app").classList.toggle("notes-on",e.target.checked);
+
+function run(){M=model(+$("selRound").value);render()}
+function render(){kpis();tabla();probBars();matches();heat();line();scatter();strTbl()}
+
+function kpis(){
+  const p=M.pro, lead=M.cur[0], fav=p.reduce((a,b)=>b.pc>a.pc?b:a), t=M.rows[selTeam];
+  const rem=R-M.played;
+  $("kpis").innerHTML=[
+   ["Líder actual",TEAMS[lead.i][0],`${lead.pts} pts tras ${M.played} jornadas`,1],
+   ["Favorito al título",TEAMS[fav.i][0],`${pc(fav.pc)} de probabilidad`,1],
+   ["Jornadas restantes",rem,`${rem*10} partidos por predecir`,1],
+   [`${TEAMS[selTeam][0]} · proyección`,`${Math.round(t.proj)} pts`,`Puesto ${t.posA}º → ${t.posP}º · descenso ${pc(t.pr)}`,1]
+  ].map(([l,v,s],k)=>`<div class="card kpi">${k==0?'<span class="badge" style="position:absolute;right:10px;top:10px">1</span>':''}<div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("")
+  + `<div class="note" style="grid-column:1/-1;margin-top:0">Tarjetas KPI (medidas DAX sobre la capa oro). La cuarta tarjeta responde al filtro "Equipo destacado".</div>`;
+}
+function tabla(){
+  $("lblProj").textContent=`· corte jornada ${M.played}`;
+  let h=`<tr><th class="t">#</th><th class="t">Equipo</th><th>PJ</th><th>G-E-P</th><th>DG</th><th>Pts</th><th>xPts rest.</th><th>Proy.</th><th>Pos. proy.</th><th>Δ</th><th>% Campeón</th><th>% Libert.</th><th>% Desc.</th></tr>`;
+  for(const r of M.cur){const d=r.posA-r.posP,z=r.posP<=6?"z-lib":r.posP<=12?"z-sud":r.posP>=17?"z-rel":"";
+    h+=`<tr class="${z} ${r.i==selTeam?"sel":""}"><td class="t">${r.posA}</td><td class="t">${TEAMS[r.i][0]}</td><td>${r.pj}</td><td>${r.w}-${r.d}-${r.l}</td><td>${r.dg>0?"+":""}${r.dg}</td><td><b>${r.pts}</b></td><td>${f1(r.xp)}</td><td><b>${f1(r.proj)}</b></td><td>${r.posP}º</td><td class="delta ${d>0?"up":d<0?"dn":""}">${d>0?"▲"+d:d<0?"▼"+(-d):"="}</td><td>${pc(r.pc)}</td><td>${pc(r.pl)}</td><td>${pc(r.pr)}</td></tr>`}
+  $("tblProj").innerHTML=h;
+}
+function probBars(){
+  let h="";for(const r of M.pro){const mid=Math.max(0,1-r.pl-r.pr);
+    h+=`<div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin-bottom:4px;font-size:12px${r.i==selTeam?";font-weight:700":""}"><span>${TEAMS[r.i][0]}</span>
+    <div class="stack" style="height:12px;grid-column:auto"><div style="width:${r.pl*100}%;background:#2f6db5"></div><div style="width:${mid*100}%;background:#dfe3e8"></div><div style="width:${r.pr*100}%;background:var(--loss)"></div></div></div>`}
+  h+=`<div class="legend"><span><i style="background:#2f6db5"></i>Termina en zona Libertadores</span><span><i style="background:#dfe3e8"></i>Zona media</span><span><i style="background:var(--loss)"></i>Desciende</span></div>`;
+  $("probBars").innerHTML=h;
+}
+function next(){return M.future.filter(f=>f.r==M.played)}
+function matches(){
+  const ms=next();$("lblNext").textContent=`· jornada ${M.played+1}`;
+  $("matches").innerHTML=ms.map((m,k)=>{const xs=[...Array(7)].map((_,i)=>[...Array(7)].map((_,j)=>[i,j,M.pm(m.lh,i)*M.pm(m.la,j)])).flat().sort((a,b)=>b[2]-a[2])[0];
+   return `<div class="match ${k==selMatch?"on":""}" data-k="${k}"><div class="h">${TEAMS[m.h][0]}</div><div class="vs">vs</div><div class="a">${TEAMS[m.a][0]}</div>
+   <div class="stack"><div style="width:${m.w*100}%;background:var(--win)">${pc(m.w)}</div><div style="width:${m.d*100}%;background:var(--draw)">${pc(m.d)}</div><div style="width:${m.l*100}%;background:var(--loss)">${pc(m.l)}</div></div>
+   <div class="meta"><span>λ ${m.lh.toFixed(2)} · xPts ${(3*m.w+m.d).toFixed(2)}</span><span>Marcador más probable: <b>${xs[0]}-${xs[1]}</b> (${pc(xs[2])})</span><span>λ ${m.la.toFixed(2)} · xPts ${(3*m.l+m.d).toFixed(2)}</span></div></div>`}).join("");
+  document.querySelectorAll(".match").forEach(e=>e.onclick=()=>{selMatch=+e.dataset.k;matches();heat()});
+}
+function heat(){
+  const m=next()[selMatch];$("lblHeat").textContent=`· ${TEAMS[m.h][1]} vs ${TEAMS[m.a][1]}`;
+  let mx=0;const g=[...Array(6)].map((_,i)=>[...Array(6)].map((_,j)=>{const p=M.pm(m.lh,i)*M.pm(m.la,j);mx=Math.max(mx,p);return p}));
+  let h=`<table class="heat"><tr><th></th><th colspan="6" style="font-weight:600">Goles ${TEAMS[m.a][0]} (visitante) →</th></tr><tr><th></th>${[0,1,2,3,4,5].map(j=>`<th>${j}</th>`).join("")}</tr>`;
+  g.forEach((row,i)=>{h+=`<tr><th style="text-align:right">${i==0?`<span style="font-weight:600">${TEAMS[m.h][1]} ↓</span> `:""}${i}</th>`+row.map((p,j)=>{const a=p/mx;const c=i>j?"74,124,89":i==j?"110,118,128":"181,84,60";return `<td style="background:rgba(${c},${(.12+a*.88).toFixed(2)});color:${a>.5?"#fff":"#1f2933"}">${(p*100).toFixed(1)}</td>`}).join("")+"</tr>"});
+  h+=`</table><div class="legend"><span>Valores en %</span><span>P(V) ${pc(m.w)} · P(E) ${pc(m.d)} · P(D) ${pc(m.l)}</span></div>`;
+  $("heat").innerHTML=h;
+}
+const PAL=["#232F3E","#FF9900","#2f6db5","#4a7c59","#b5543c","#8a5fb0","#6b7480"];
+function line(){
+  $("chips").innerHTML=TEAMS.map((t,i)=>`<span class="chip ${chips.has(i)?"on":""}" data-i="${i}">${t[0]}</span>`).join("");
+  document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{const i=+c.dataset.i;chips.has(i)?chips.delete(i):chips.size<7&&chips.add(i);line()});
+  const W=1000,H=380,pl=40,pr=90,pt=14,pb=34,maxY=Math.ceil(Math.max(...M.rows.map(r=>r.proj))/10)*10+5;
+  const x=r=>pl+(W-pl-pr)*r/R,y=v=>H-pb-(H-pt-pb)*v/maxY;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución de puntos">`;
+  for(let v=0;v<=maxY;v+=10)s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#eef0f2"/><text x="${pl-6}" y="${y(v)+4}" font-size="11" text-anchor="end" fill="#6b7480">${v}</text>`;
+  for(let r=0;r<=R;r+=2)s+=`<text x="${x(r)}" y="${H-pb+16}" font-size="11" text-anchor="middle" fill="#6b7480">${r}</text>`;
+  s+=`<text x="${(W-pr+pl)/2}" y="${H-4}" font-size="11" text-anchor="middle" fill="#6b7480">Jornada</text>`;
+  s+=`<rect x="${x(M.played)}" y="${pt}" width="${x(R)-x(M.played)}" height="${H-pt-pb}" fill="#f4f5f7"/><text x="${x(M.played)+6}" y="${pt+14}" font-size="11" fill="#6b7480">Proyección</text>`;
+  [...chips].forEach((i,k)=>{const c=PAL[k%PAL.length],hs=M.hist[i],xs=M.xhist[i];
+    s+=`<polyline fill="none" stroke="${c}" stroke-width="${i==selTeam?3:2}" points="${hs.map((v,r)=>`${x(r)},${y(v)}`).join(" ")}"/>`;
+    s+=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-dasharray="5 4" points="${xs.map((v,r)=>`${x(M.played+r)},${y(v)}`).join(" ")}"/>`;
+    s+=`<text x="${x(R)+6}" y="${y(xs[xs.length-1])+4}" font-size="11.5" fill="${c}" font-weight="600">${TEAMS[i][1]} ${Math.round(xs[xs.length-1])}</text>`});
+  $("lineChart").innerHTML=s+"</svg>";
+}
+function scatter(){
+  const W=520,H=420,p=44,pts=M.rows.map(r=>({i:r.i,at:(r.atH+r.atA)/2,df:(r.dfH+r.dfA)/2}));
+  const ax=[.5,1.6],dy=[.5,1.6],x=v=>p+(W-2*p)*(v-ax[0])/(ax[1]-ax[0]),y=v=>p+(H-2*p)*(v-dy[0])/(dy[1]-dy[0]);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Ataque vs defensa">`;
+  s+=`<line x1="${x(1)}" x2="${x(1)}" y1="${p}" y2="${H-p}" stroke="#cfd4da" stroke-dasharray="4 3"/><line x1="${p}" x2="${W-p}" y1="${y(1)}" y2="${y(1)}" stroke="#cfd4da" stroke-dasharray="4 3"/>`;
+  s+=`<text x="${W-p}" y="${p-8}" font-size="11" text-anchor="end" fill="#4a7c59">Buen ataque · buena defensa</text><text x="${p}" y="${H-p+16}" font-size="11" fill="#b5543c">Ataque débil · defensa débil</text>`;
+  s+=`<text x="${W/2}" y="${H-6}" font-size="11" text-anchor="middle" fill="#6b7480">Índice de ataque →</text><text x="12" y="${H/2}" font-size="11" text-anchor="middle" fill="#6b7480" transform="rotate(-90 12 ${H/2})">← Índice de defensa (menor = mejor)</text>`;
+  for(const q of pts){const on=q.i==selTeam;s+=`<circle cx="${x(q.at)}" cy="${y(q.df)}" r="${on?7:5}" fill="${on?"#FF9900":"#232F3E"}" opacity="${on?1:.75}"/><text x="${x(q.at)+8}" y="${y(q.df)+4}" font-size="10.5" fill="#1f2933">${TEAMS[q.i][1]}</text>`}
+  $("scatter").innerHTML=s+"</svg>";
+}
+function strTbl(){
+  const rs=[...M.rows].sort((a,b)=>((b.atH+b.atA)-(b.dfH+b.dfA))-((a.atH+a.atA)-(a.dfH+a.dfA)));
+  const mx=Math.max(...rs.map(r=>Math.max(r.atH,r.atA)));
+  let h=`<tr><th class="t">#</th><th class="t">Equipo</th><th>Atq. local</th><th>Def. local</th><th>Atq. visit.</th><th>Def. visit.</th><th class="t">Ataque medio</th></tr>`;
+  rs.forEach((r,k)=>h+=`<tr class="${r.i==selTeam?"sel":""}"><td class="t">${k+1}</td><td class="t">${TEAMS[r.i][0]}</td><td>${r.atH.toFixed(2)}</td><td>${r.dfH.toFixed(2)}</td><td>${r.atA.toFixed(2)}</td><td>${r.dfA.toFixed(2)}</td><td class="t"><div class="bar"><i style="width:${((r.atH+r.atA)/2/mx*100).toFixed(0)}%"></i></div></td></tr>`);
+  $("tblStr").innerHTML=h;
+}
+
+// Navegación por hash
+function route(){const h=(location.hash||"#tabla").slice(1);let found=false;
+  document.querySelectorAll("#tabs a").forEach(a=>{const on=a.getAttribute("href")=="#"+h;found||=on;a.classList.toggle("on",on);$(a.dataset.p).classList.toggle("on",on)});
+  if(!found){document.querySelector("#tabs a").classList.add("on");$("p-tabla").classList.add("on")}}
+window.addEventListener("hashchange",route);
+run();route();
+</script>
+</body>
+</html>
