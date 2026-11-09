@@ -1,0 +1,66 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LeerBronze",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::brasileirao-datalake-851725543887/bronze/*"
+    },
+    {
+      "Sid": "EscribirSilverGold",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::brasileirao-datalake-851725543887/silver/*",
+        "arn:aws:s3:::brasileirao-datalake-851725543887/gold/*"
+      ]
+    },
+    {
+      "Sid": "ListarBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::brasileirao-datalake-851725543887",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "bronze/*",
+            "silver/*",
+            "gold/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "GlueDataCatalog",
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:CreateTable",
+        "glue:UpdateTable",
+        "glue:DeleteTable",
+        "glue:BatchCreatePartition",
+        "glue:GetPartition",
+        "glue:GetPartitions",
+        "glue:CreatePartition",
+        "glue:UpdatePartition",
+        "glue:BatchGetPartition"
+      ],
+      "Resource": [
+        "arn:aws:glue:us-east-2:851725543887:catalog",
+        "arn:aws:glue:us-east-2:851725543887:database/brasileirao_db",
+        "arn:aws:glue:us-east-2:851725543887:table/brasileirao_db/*"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+# Credenciales y secretos - NUNCA subir
+.env
+*.env
+!.env.example
+
+# Artefactos de build
+*.zip
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# AWS
+.aws-sam/
+
+# Archivos de policy con ARNs de cuenta (opcional, contienen el account id)
+# aws-infra/

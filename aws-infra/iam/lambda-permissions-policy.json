@@ -1,0 +1,34 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LeerApiKeyParameterStore",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter"
+      ],
+      "Resource": "arn:aws:ssm:us-east-2:851725543887:parameter/brasileirao/api-key"
+    },
+    {
+      "Sid": "EscribirCapaBronze",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::brasileirao-datalake-851725543887/bronze/*"
+    },
+    {
+      "Sid": "ListarBucketPrefijoBronze",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::brasileirao-datalake-851725543887",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "bronze/*"
+        }
+      }
+    }
+  ]
+}
